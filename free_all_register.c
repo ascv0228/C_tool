@@ -48,7 +48,25 @@ void myfree(void *address){
 }
 
 void *mymalloc(size_t size){
-    return _malloc(size);
+    
+    /*分配記憶體*/
+    void* ptr = _malloc(size);
+    
+	if (ptr == NULL) {  //內存不足，記憶體分配失敗
+        printf("Failed malloc\n");
+        return NULL;
+	}    
+    /*紀錄地址*/
+    register_address(ptr);
+    
+    /*註冊 atexit() */
+    /*僅在程序第一次執行時呼叫 atexit() */
+	static int first_process = 1;
+	if (first_process) {
+		atexit(&free_all_register_address);  //此函數只會被呼叫一次
+		first_process = 0;  //第一次執行的標記
+	}
+    return ptr;
 }
 void *myrealloc(void *ptr, size_t size){
     return _realloc(ptr, size);
@@ -183,27 +201,6 @@ void free_all_register_address(void) {
 	address_pool = NULL;
 }
 
-void* mymalloc2(unsigned int size){
-
-    /*分配記憶體*/
-    void* ptr = mymalloc(size);
-    
-	if (ptr == NULL) {  //內存不足，記憶體分配失敗
-        printf("Failed malloc\n");
-        return NULL;
-	}    
-    /*紀錄地址*/
-    register_address(ptr);
-    
-    /*註冊 atexit() */
-    /*僅在程序第一次執行時呼叫 atexit() */
-	static int first_process = 1;
-	if (first_process) {
-		atexit(&free_all_register_address);  //此函數只會被呼叫一次
-		first_process = 0;  //第一次執行的標記
-	}
-    return ptr;
-}
 
 void* myrealloc2(void *ptr, size_t size){
 
@@ -269,7 +266,7 @@ void deregist_address(void *address) {
 
 int main(){
     int* ptr;
-    ptr = (int*)mymalloc2(10* sizeof(int));
+    ptr = (int*)mymalloc(10* sizeof(int));
     for(int i = 0; i<10 ; i++)
     {
         ptr[i] = i;
@@ -281,5 +278,4 @@ int main(){
     }
     
     myfree(ptr);
-    //myfree(ptr);
 }
