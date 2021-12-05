@@ -1,52 +1,68 @@
 #include <stdio.h>
 #include <stdlib.h>
-void free_all_register_address(void);               // 釋放
-void register_address(void *address);               // 標記
-void my_calloc(void **ptr, int length, int type_side); // 分配
 
-void **address_pool = NULL;  //將會是一個動態陣列，儲存 void*
-int index_ = 0;               //索引，指向目前可以儲存地址的空間
-#define mc(ptr, len, type) my_calloc((void **)ptr, len, sizeof(type));
+void free_all_register_address(void);               // 釋放
+void early_free(void *address );
+
+void register_address(void *address);               // 標記
+void deregist_address(void *address);
+
+void new_1d(void **ptr, int length, int type_side); // 分配
+void connect_address_pool(void ****get_address_pool, void **get_index);
+void re_1d(void **ptr, int length, int type_side);
+void get_address_pool(void ***get_address_pool, int *get_index);
+
 
 void register_address(void *address){
+    
+    /*用於取得記憶體地址池的資料*/
+	void ***address_pool = NULL;
+	int *index;
 
+	/*取得記憶體地址池的資料*/
+	connect_address_pool(&address_pool, (void*)&index);
+    
     /*擴大、重新分配用於儲存記憶體地址的空間*/
     void **temp_ptr = NULL;  //中轉指標
-	temp_ptr = (void**)realloc(address_pool, (index_ + 1) * sizeof(void*));
+	temp_ptr = (void**)realloc(*address_pool, (*index + 1) * sizeof(void*));
     
-    /*對realloc分配記憶體的錯誤檢測*/
-    if (temp_ptr == NULL) {
-        /*錯誤處理*/
-	}
+    /*對realloc分配記憶體的錯誤檢測*/ // ...省略......
     
     /*成功建立的空間分配給address_pool*/
-	address_pool = temp_ptr;  //取得中轉指標的地址
+	*address_pool = temp_ptr;  //取得中轉指標的地址
     
     /*註冊記憶體地址*/
-	address_pool[index_] = address;
-	index_++;  //空間擴大、索引移位
+	(*address_pool)[*index] = address;
+	(*index)++;  //空間擴大、索引移位
     
 }
 
 
 void free_all_register_address(void) {
 
+	/*用於取得記憶體地址池的資料*/
+	void **address_pool = NULL;
+	int index;
+
+	/*取得記憶體地址池的資料*/
+	get_address_pool(&address_pool, &index);
+
 	/*遍歷 address_pool 的空間*/
-	for (int i = 0; i < index_; i++) {
+	for (int i = 0; i < index; i++) {
 		free(address_pool[i]);  //釋放曾經記錄過的記憶體地址的空間
 		address_pool[i] = NULL;
 	}
 
-    /*釋放用於紀錄的空間*/
+	/*釋放用於紀錄的空間*/
 	free(address_pool);
 	address_pool = NULL;
 }
 
 
-void my_calloc(void **ptr, int length, int type_size){
+void new_1d(void **ptr, int length, int type_side){
 
     /*分配記憶體*/
-    *ptr = calloc(length, type_size);
+    *ptr = malloc(length * type_side);
     
     /*紀錄地址*/
     register_address(*ptr);
@@ -61,12 +77,85 @@ void my_calloc(void **ptr, int length, int type_size){
     
 }
 
+void connect_address_pool(void ****get_address_pool, void **get_index){
 
-int main()
-{
-    printf("Hello World");
-    int *p;
-    mc(&p, 3, int);
+    /*用於儲存記憶體地址池的空間*/
+	static void **address_pool = NULL;
+	static int index = 0;  //address_pool 的索引
 
-    return 0;
+	*get_address_pool = &address_pool;
+	*get_index = &index;
+}
+
+void get_address_pool(void ***get_address_pool, int *get_index){
+    
+    /*用於取得記憶體地址池的資料*/
+    void ***address_pool = NULL;
+    int *index;
+
+    /*取得記憶體地址池的資料*/
+    connect_address_pool(&address_pool, (void*)&index);
+    
+    *get_address_pool = *address_pool;
+    *get_index = *index;
+}
+
+void deregist_address(void *address) {
+
+	/*用於取得記憶體地址池的資料*/
+	void ***address_pool = NULL;
+	int *index;
+
+	/*取得記憶體地址池的資料*/
+	connect_address_pool(&address_pool, (void*)&index);
+
+	/*遍歷 address_pool 的空間*/
+	for (int i = 0; i < *index; i++) {
+
+		/*具體註銷工作*/
+		if ((*address_pool)[i] == address) {  //尋找對應的記憶體地址
+			(*address_pool)[i] = NULL;  //註銷註冊
+			break;  //減少迴圈開支
+		}
+	}
+}
+
+void early_free(void *address) {
+	deregist_address(address);
+	free(address);
+}
+
+void re_1d(void **ptr, int length, int type_side){
+
+    /*重新分配記憶體*/
+	void *temp_ptr = NULL; //中轉指標
+    temp_ptr = realloc(*ptr, length * type_side);  
+    
+    /*對realloc分配記憶體的錯誤檢測*/
+	if (temp_ptr == NULL) {  //內存不足，記憶體分配失敗
+		/*錯誤處理*/
+	}
+
+	/*分配後地址不相同*/
+	if (temp_ptr != *ptr) {
+		deregist_address(*ptr);  //註銷註冊
+		register_address(temp_ptr);  //重新登記
+	}
+
+	/*成功建立的空間分配給ptr*/
+	*ptr = temp_ptr;  //取得中轉指標的地址
+}
+
+int main(){
+    int* ptr;
+    new_1d((void* )&ptr, 10, sizeof(int));
+    for(int i = 0; i<10 ; i++)
+    {
+        ptr[i] = i;
+    }
+    
+    for(int i = 0; i<10 ; i++)
+    {
+        printf("%d\n", ptr[i]);
+    }
 }
