@@ -38,8 +38,13 @@ void *mycalloc(size_t nitems, size_t size){
 }
 
 void myfree(void *address){
+    if(address == NULL)
+    {
+        printf("Cannot free NULL ptr\n");
+        return;
+    }
     deregist_address(address);
-	myfree(address);
+	_free(address);
 }
 
 void *mymalloc(size_t size){
@@ -167,10 +172,9 @@ void free_all_register_address(void) {
 
 	/*取得記憶體地址池的資料*/
 	get_address_pool(&address_pool, &index);
-
 	/*遍歷 address_pool 的空間*/
 	for (int i = 0; i < index; i++) {
-		myfree(address_pool[i]);  //釋放曾經記錄過的記憶體地址的空間
+		_free(address_pool[i]);  //釋放曾經記錄過的記憶體地址的空間
 		address_pool[i] = NULL;
 	}
 
@@ -246,21 +250,19 @@ void get_address_pool(void ***get_address_pool, int *get_index){
 }
 
 void deregist_address(void *address) {
-
+    if(address == NULL) return;
 	/*用於取得記憶體地址池的資料*/
 	void ***address_pool = NULL;
 	int *index;
-
+	
 	/*取得記憶體地址池的資料*/
 	connect_address_pool(&address_pool, (void*)&index);
-
 	/*遍歷 address_pool 的空間*/
 	for (int i = 0; i < *index; i++) {
-
 		/*具體註銷工作*/
 		if ((*address_pool)[i] == address) {  //尋找對應的記憶體地址
 			(*address_pool)[i] = NULL;  //註銷註冊
-			break;  //減少迴圈開支
+			return;  //減少迴圈開支
 		}
 	}
 }
@@ -277,4 +279,7 @@ int main(){
     {
         printf("%d\n", ptr[i]);
     }
+    
+    myfree(ptr);
+    //myfree(ptr);
 }
