@@ -69,7 +69,24 @@ void *mymalloc(size_t size){
     return ptr;
 }
 void *myrealloc(void *ptr, size_t size){
-    return _realloc(ptr, size);
+    
+    /*重新分配記憶體*/
+    void *temp_ptr = _realloc(ptr, size);  
+    
+    /*對realloc分配記憶體的錯誤檢測*/
+    if (temp_ptr == NULL) {  //內存不足，記憶體分配失敗
+        printf("Failed realloc\n");
+        return NULL;
+    }
+
+    /*分配後地址不相同*/
+    if (temp_ptr != ptr) {
+        deregist_address(ptr);  //註銷註冊
+        register_address(temp_ptr);  //重新登記
+    }
+
+    /*成功建立的空間分配給ptr*/
+    return temp_ptr;
 }
 
 Header *request_memory(Header *last, unsigned int size){
@@ -201,27 +218,6 @@ void free_all_register_address(void) {
     address_pool = NULL;
 }
 
-
-void* myrealloc2(void *ptr, size_t size){
-
-    /*重新分配記憶體*/
-    void *temp_ptr = myrealloc(ptr, size);  
-    
-    /*對realloc分配記憶體的錯誤檢測*/
-    if (temp_ptr == NULL) {  //內存不足，記憶體分配失敗
-        printf("Failed realloc\n");
-        return NULL;
-    }
-
-    /*分配後地址不相同*/
-    if (temp_ptr != ptr) {
-        deregist_address(ptr);  //註銷註冊
-        register_address(temp_ptr);  //重新登記
-    }
-
-    /*成功建立的空間分配給ptr*/
-    return temp_ptr;
-}
 
 void connect_address_pool(void ****get_address_pool, void **get_index){
 
